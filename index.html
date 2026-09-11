@@ -13,17 +13,28 @@
   color-scheme: dark;
   --page:        #0d0d0d;
   --surface:     #1a1a19;
+  --surface-2:   #232321;
   --ink:         #ffffff;
-  --ink-2:       #c3c2b7;
+  --ink-2:       #8fc0f5;   /* body copy — blue, 10.2:1 on the page */
   --muted:       #898781;
   --grid:        #2c2c2a;
   --axis:        #383835;
   --border:      rgba(255,255,255,0.10);
   --wash:        rgba(255,255,255,0.05);
+  --scrim:       rgba(5,6,8,0.66);
   --s1:          #3987e5;
   --s2:          #d95926;
   --s3:          #199e70;
-  --shadow:      0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.35);
+  /* Elevation ladder — every surface sits at a known height above the page,
+     so depth reads as a system rather than as per-component decoration. */
+  --e0:          0 1px 2px rgba(0,0,0,.35);
+  --e1:          0 1px 1px rgba(0,0,0,.50), 0 3px 8px rgba(0,0,0,.34);
+  --e2:          0 2px 3px rgba(0,0,0,.46), 0 12px 28px rgba(0,0,0,.42);
+  --e3:          0 4px 7px rgba(0,0,0,.48), 0 26px 56px rgba(0,0,0,.52);
+  --edge-hi:     rgba(255,255,255,0.085);   /* top bevel, lit from above */
+  --lip:         rgba(0,0,0,0.55);          /* front face of a pressed control */
+  --glare:       rgba(255,255,255,0.065);   /* sheen that tracks the cursor */
+  --lamp:        rgba(120,170,255,0.055);   /* page-wide key light */
 }
 /* Dark is the default in every context; light is opt-in via the toggle.
    The OS preference is deliberately not consulted. */
@@ -31,29 +42,50 @@
   color-scheme: light;
   --page:        #f9f9f7;
   --surface:     #fcfcfb;
+  --surface-2:   #ffffff;
   --ink:         #0b0b0b;
-  --ink-2:       #52514e;
+  --ink-2:       #1f4f8f;   /* body copy — blue, 8.0:1 on the card */
   --muted:       #898781;
   --grid:        #e1e0d9;
   --axis:        #c3c2b7;
   --border:      rgba(11,11,11,0.10);
   --wash:        rgba(11,11,11,0.035);
+  --scrim:       rgba(18,24,34,0.36);
   --s1:          #2a78d6;
   --s2:          #eb6834;
   --s3:          #1baf7a;
-  --shadow:      0 1px 2px rgba(11,11,11,.05), 0 6px 20px rgba(11,11,11,.045);
+  --e0:          0 1px 2px rgba(11,11,11,.05);
+  --e1:          0 1px 1px rgba(11,11,11,.05), 0 3px 8px rgba(11,11,11,.055);
+  --e2:          0 2px 4px rgba(11,11,11,.06), 0 12px 28px rgba(11,11,11,.085);
+  --e3:          0 4px 8px rgba(11,11,11,.07), 0 26px 56px rgba(11,11,11,.125);
+  --edge-hi:     rgba(255,255,255,0.95);
+  --lip:         rgba(11,11,11,0.11);
+  --glare:       rgba(42,120,214,0.055);
+  --lamp:        rgba(42,120,214,0.05);
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 body {
   margin: 0; padding: 0 20px 64px;
   background: var(--page); color: var(--ink);
   font: 400 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-.wrap { max-width: 1060px; margin: 0 auto; }
+/* A single soft key light that follows the pointer. Everything below is lit
+   and shadowed as if by this one source, which is what makes the tilting
+   surfaces read as one physical scene instead of separate effects. */
+#lamp {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(680px circle at var(--mx,50%) var(--my,12%),
+                              var(--lamp), transparent 68%);
+}
+.wrap { position: relative; z-index: 1; max-width: 1060px; margin: 0 auto; }
 h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
-a { color: var(--s1); }
+/* Body copy is blue, so links can no longer be identified by colour alone —
+   they carry an underline instead. */
+a { color: var(--s1); text-decoration: underline; text-underline-offset: 2px;
+    text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--s1) 45%, transparent); }
+a:hover { text-decoration-color: currentColor; }
 
 /* ── Header ─────────────────────────────────────────────────── */
 header { padding: 40px 0 20px; }
@@ -61,40 +93,106 @@ header { padding: 40px 0 20px; }
 h1 { font-size: 34px; letter-spacing: -0.022em; line-height: 1.1; }
 .role-line { margin-top: 5px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
 .techline { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 5px; max-width: 620px; }
-.techline span { font-size: 11px; line-height: 1.4; padding: 3px 8px; border-radius: 5px;
-                 background: var(--wash); color: var(--ink-2);
-                 border: 1px solid var(--border); white-space: nowrap; }
+.techline button { font-size: 11px; line-height: 1.4; padding: 3px 8px; border-radius: 5px;
+                 background: var(--surface-2); color: var(--ink-2); cursor: pointer;
+                 border: 1px solid var(--border); white-space: nowrap;
+                 box-shadow: inset 0 1px 0 var(--edge-hi), var(--e0);
+                 transition: transform .16s cubic-bezier(.2,.75,.3,1), color .16s; }
+.techline button:hover { transform: translateY(-2px); color: var(--ink); }
+.techline button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 .contact { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .contact span { white-space: nowrap; }
 .tools { display: flex; gap: 8px; }
-button {
-  font: inherit; font-size: 13px; font-weight: 500;
-  color: var(--ink-2); background: var(--surface);
+/* Controls are physical: a lit top bevel, a coloured front face below them,
+   and they travel down onto the page when pressed. Scoped to the toolbar —
+   the timeline bars, certification beads and role headers are also <button>
+   and each has its own material. */
+button { font: inherit; }
+button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tools button {
+  font-size: 13px; font-weight: 500;
+  color: var(--ink-2); background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 8px;
   padding: 7px 13px; cursor: pointer;
-  transition: background .12s, color .12s, border-color .12s;
+  box-shadow: inset 0 1px 0 var(--edge-hi), 0 2px 0 var(--lip), var(--e0);
+  transition: background .12s, color .12s, border-color .12s,
+              transform .12s cubic-bezier(.2,.75,.3,1), box-shadow .12s;
 }
-button:hover { background: var(--wash); color: var(--ink); }
-button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.tools button:hover { background: var(--wash); color: var(--ink); transform: translateY(-1px);
+               box-shadow: inset 0 1px 0 var(--edge-hi), 0 3px 0 var(--lip), var(--e1); }
+.tools button:active { transform: translateY(2px);
+                box-shadow: inset 0 1px 0 var(--edge-hi), 0 0 0 var(--lip); }
 
 /* ── Cards ──────────────────────────────────────────────────── */
+/* Self-perspective: each card is its own little camera, so a card near the
+   bottom of a long page is not distorted by a page-wide vanishing point.
+   preserve-3d lets the card's own children sit at different depths. */
 .card {
+  position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 14px; padding: 22px 24px; margin-top: 18px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--e1);
+  transform-style: preserve-3d;
+  transform: perspective(1500px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition: transform .5s cubic-bezier(.2,.75,.3,1), box-shadow .3s ease;
 }
+.card::before {                          /* bevel: catches the light on top */
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+.card::after {                           /* sheen that tracks the cursor */
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; opacity: 0; transition: opacity .3s ease;
+  background: radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),
+                              var(--glare), transparent 62%);
+}
+.card[data-tilt="on"] {
+  z-index: 2; box-shadow: var(--e3); will-change: transform;
+  transition: transform .12s linear, box-shadow .3s ease;
+}
+.card[data-tilt="on"]::after { opacity: 1; }
 .card > h2 {
   font-size: 11.5px; font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: var(--muted); margin-bottom: 16px;
+  transition: transform .4s cubic-bezier(.2,.75,.3,1);
 }
+.card[data-tilt="on"] > h2 { transform: translateZ(18px); }
 .lede { font-size: 15.5px; line-height: 1.62; color: var(--ink-2);
         text-align: justify; text-justify: inter-word; hyphens: auto; }
 .lede strong { color: var(--ink); font-weight: 600; }
 
 /* ── Hero + stat tiles ──────────────────────────────────────── */
-.stats { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr; gap: 1px;
-         background: var(--border); border-radius: 12px; overflow: hidden; }
-.tile { background: var(--surface); padding: 18px 20px; }
+/* Separate blocks rather than the old hairline grid — each tile is a slab
+   that lifts, and its contents ride at three different depths. */
+.stats { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr 1fr; gap: 10px; }
+.tile {
+  position: relative; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 11px;
+  padding: 18px 20px; box-shadow: var(--e1); cursor: pointer;
+  transform-style: preserve-3d;
+  transform: perspective(760px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition: transform .5s cubic-bezier(.2,.75,.3,1), box-shadow .3s ease;
+}
+.tile:focus-visible { outline: 2px solid var(--s1); outline-offset: 3px; }
+.tile::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+.tile::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; opacity: 0; transition: opacity .3s ease;
+  background: radial-gradient(240px circle at var(--gx,50%) var(--gy,50%),
+                              var(--glare), transparent 66%);
+}
+.tile[data-tilt="on"] {
+  z-index: 3; box-shadow: var(--e3); will-change: transform;
+  transition: transform .1s linear, box-shadow .3s ease;
+}
+.tile[data-tilt="on"]::after { opacity: 1; }
+.tile .v, .tile .l, .tile .s { transition: transform .35s cubic-bezier(.2,.75,.3,1); }
+.tile[data-tilt="on"] .v { transform: translateZ(28px); }
+.tile[data-tilt="on"] .l { transform: translateZ(15px); }
+.tile[data-tilt="on"] .s { transform: translateZ(8px); }
 .tile .v { font-size: 30px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); }
 .tile.hero .v { font-size: 52px; letter-spacing: -0.03em; }
 .tile .l { margin-top: 6px; font-size: 12.5px; line-height: 1.35; color: var(--ink-2); }
@@ -106,34 +204,71 @@ button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
                 text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .chip {
   font: inherit; font-size: 13px; padding: 6px 13px; border-radius: 999px;
-  border: 1px solid var(--border); background: var(--surface);
+  border: 1px solid var(--border); background: var(--surface-2);
   color: var(--ink-2); cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--edge-hi), 0 2px 0 var(--lip), var(--e0);
+  transition: background .12s, color .12s,
+              transform .12s cubic-bezier(.2,.75,.3,1), box-shadow .12s;
 }
-.chip:hover { background: var(--wash); color: var(--ink); }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.chip:hover { background: var(--wash); color: var(--ink); transform: translateY(-1px);
+              box-shadow: inset 0 1px 0 var(--edge-hi), 0 3px 0 var(--lip), var(--e1); }
+.chip:active { transform: translateY(2px);
+               box-shadow: inset 0 1px 0 var(--edge-hi), 0 0 0 var(--lip); }
+/* Pressed state reads as pressed: sunk into the page, no front face. */
+.chip[aria-pressed="true"] {
+  background: var(--ink); color: var(--page); border-color: var(--ink);
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.28), 0 1px 0 var(--lip);
+}
 .chip:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 
 /* ── Timeline (Gantt) ───────────────────────────────────────── */
 .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
-.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px;
+            margin-right: 7px; vertical-align: -1px; background: var(--sw);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.35), var(--e0); }
 .legend span { font-size: 12.5px; color: var(--ink-2); }
 
 .gantt { position: relative; }
 .grow { display: grid; grid-template-columns: 186px 1fr; align-items: center;
-        gap: 14px; margin-bottom: 9px; transition: opacity .18s; }
+        gap: 14px; margin-bottom: 11px; transition: opacity .18s; }
 .grow.dim { opacity: .26; }
 .gname { text-align: right; line-height: 1.25; }
 .gname b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .gname em { display: block; font-size: 12px; font-style: normal; color: var(--muted); }
-.track { position: relative; height: 30px; }
+.track { position: relative; height: 32px; }
+/* The rail is a groove cut into the card, not a line drawn on it. */
 .track::before {
-  content: ""; position: absolute; inset: 14px 0 auto 0; height: 1px; background: var(--grid);
+  content: ""; position: absolute; inset: 15px 0 auto 0; height: 2px;
+  border-radius: 2px; background: var(--grid);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.35), 0 1px 0 var(--edge-hi);
 }
+/* Bars are slabs: lit top face, body, and a darker front face standing
+   proud of the rail. --bar carries the role's phase colour. */
 .bar {
-  position: absolute; top: 5px; height: 20px; border-radius: 4px;
+  position: absolute; top: 5px; height: 20px; border-radius: 5px;
   cursor: pointer; border: 0; padding: 0; display: block;
+  background: var(--bar);
+  box-shadow: 0 3px 0 -1px rgba(0,0,0,.45), 0 6px 12px rgba(0,0,0,.32);
+  transition: transform .18s cubic-bezier(.2,.75,.3,1), box-shadow .18s, filter .18s;
 }
-.bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .bar {
+    background: linear-gradient(180deg,
+                color-mix(in srgb, var(--bar) 78%, #fff) 0%,
+                var(--bar) 44%,
+                color-mix(in srgb, var(--bar) 86%, #000) 100%);
+    box-shadow: 0 3px 0 -1px color-mix(in srgb, var(--bar) 52%, #000),
+                0 7px 14px rgba(0,0,0,.34);
+  }
+  .bar:hover, .bar:focus-visible {
+    box-shadow: 0 6px 0 -1px color-mix(in srgb, var(--bar) 52%, #000),
+                0 14px 22px rgba(0,0,0,.38);
+  }
+}
+.bar:hover, .bar:focus-visible { transform: translateY(-3px); filter: brightness(1.07); }
+.bar:active { transform: translateY(1px); }
+.bar:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 .blab {
   position: absolute; top: 8px; font-size: 11.5px; line-height: 14px;
   white-space: nowrap; pointer-events: none; font-variant-numeric: tabular-nums;
@@ -151,34 +286,71 @@ button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 .certlbl { text-align: right; font-size: 11.5px; font-weight: 700; letter-spacing: .07em;
            text-transform: uppercase; color: var(--muted); padding-top: 2px; }
 .certrail { position: relative; height: 34px; }
-.certrail::before { content: ""; position: absolute; inset: 7px 0 auto 0; height: 1px; background: var(--grid); }
+.certrail::before { content: ""; position: absolute; inset: 7px 0 auto 0; height: 2px;
+  border-radius: 2px; background: var(--grid);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.35), 0 1px 0 var(--edge-hi); }
+/* Certifications are beads resting on the rail — shaded top-left to read
+   as spheres rather than flat dots. */
 .cdot {
-  position: absolute; top: 2px; width: 11px; height: 11px; border-radius: 50%;
-  background: var(--s1); box-shadow: 0 0 0 2px var(--surface);
+  position: absolute; top: 1px; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--s1);
+  box-shadow: 0 2px 4px rgba(0,0,0,.45), 0 0 0 2px var(--surface);
   transform: translateX(-50%); cursor: pointer; border: 0; padding: 0;
+  transition: transform .18s cubic-bezier(.2,.75,.3,1), box-shadow .18s;
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cdot { background: radial-gradient(circle at 32% 27%,
+            color-mix(in srgb, var(--s1) 40%, #fff) 0%,
+            var(--s1) 58%,
+            color-mix(in srgb, var(--s1) 72%, #000) 100%); }
+}
+.cdot:hover, .cdot:focus-visible {
+  transform: translateX(-50%) translateY(-3px) scale(1.15);
+  box-shadow: 0 6px 10px rgba(0,0,0,.45), 0 0 0 2px var(--surface);
 }
 .cdot:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-.cyr { position: absolute; top: 17px; transform: translateX(-50%);
+.cyr { position: absolute; top: 19px; transform: translateX(-50%);
        font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
 
 /* ── Role detail cards ──────────────────────────────────────── */
 .roles { display: grid; gap: 10px; }
-.role { border: 1px solid var(--border); border-radius: 11px; overflow: hidden; transition: opacity .18s; }
+.role {
+  position: relative; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 11px;
+  box-shadow: var(--e0);
+  transform-style: preserve-3d;
+  transform: perspective(1300px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition: transform .5s cubic-bezier(.2,.75,.3,1), box-shadow .3s ease, opacity .18s;
+}
+.role::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; box-shadow: inset 0 1px 0 var(--edge-hi);
+}
+.role[data-tilt="on"] {
+  z-index: 2; box-shadow: var(--e2); will-change: transform;
+  transition: transform .12s linear, box-shadow .3s ease, opacity .18s;
+}
 .role.dim { opacity: .3; }
 .rhead {
   width: 100%; text-align: left; display: flex; gap: 12px; align-items: baseline;
-  padding: 14px 16px; background: transparent; border: 0; border-radius: 0; cursor: pointer;
+  padding: 14px 16px; background: transparent; border: 0; border-radius: 10px;
+  cursor: pointer;
 }
 .rhead:hover { background: var(--wash); }
-.rdot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; align-self: center; }
+.rdot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; align-self: center;
+        background: var(--dot); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), var(--e0);
+        transition: transform .3s cubic-bezier(.2,.75,.3,1); }
+.role[data-tilt="on"] .rdot { transform: translateZ(14px); }
 .rtitle { font-size: 14.5px; font-weight: 600; color: var(--ink); }
 .rco { font-size: 13px; color: var(--ink-2); }
 .rdate { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap;
          font-variant-numeric: tabular-nums; }
-.rchev { color: var(--muted); font-size: 11px; transition: transform .18s; }
-.role[data-open="true"] .rchev { transform: rotate(90deg); }
+.rchev { color: var(--muted); font-size: 12px; transition: transform .18s, color .18s; }
+.rhead:hover .rchev { color: var(--s1); transform: translate(2px,-2px); }
+/* Detail now lives in the modal. The markup stays in the DOM unstyled so the
+   printed PDF keeps every bullet exactly as before — the rules below are
+   dormant on screen and only take effect once print un-hides .rbody. */
 .rbody { display: none; padding: 0 16px 16px 37px; }
-.role[data-open="true"] .rbody { display: block; }
 .rbody ul { margin: 0; padding-left: 17px; }
 .rbody li { font-size: 13.8px; line-height: 1.55; color: var(--ink-2); margin-bottom: 6px; }
 /* The stripe inherits the role's own phase colour, so it matches that role's
@@ -202,19 +374,37 @@ button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 }
 .mx tbody td { border-top: 1px solid var(--grid); text-align: center; }
 .mx tbody tr:hover th, .mx tbody tr:hover td { background: var(--wash); }
-.cell { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
-.cell.on  { background: var(--c); }
+/* Matrix beads share the timeline's lighting so the two charts read as
+   the same material seen at different scales. Filled beads are real
+   buttons — they open the capability synopsis; empty ones are inert. */
+.cell { display: inline-block; width: 13px; height: 13px; border-radius: 50%;
+        padding: 0; border: 0; background: none;
+        transition: transform .18s cubic-bezier(.2,.75,.3,1), box-shadow .18s; }
+button.cell { cursor: pointer; }
+button.cell:focus-visible { outline: 2px solid var(--s1); outline-offset: 3px; }
+.cell.on  { background: var(--c); box-shadow: 0 1px 2px rgba(0,0,0,.38); }
 .cell.off { box-shadow: inset 0 0 0 1.5px var(--grid); }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .cell.on { background: radial-gradient(circle at 32% 27%,
+               color-mix(in srgb, var(--c) 42%, #fff) 0%,
+               var(--c) 60%,
+               color-mix(in srgb, var(--c) 78%, #000) 100%); }
+}
+.cell.on:hover { transform: translateY(-2px) scale(1.18); box-shadow: 0 4px 7px rgba(0,0,0,.4); }
 .mxkey { margin-top: 14px; font-size: 12px; color: var(--muted); }
-.mxkey .cell { vertical-align: -1px; margin: 0 5px 0 0; }
+.mxkey .cell { vertical-align: -2px; margin: 0 5px 0 0; }
 .mxkey .cell.on { --c: var(--muted); }
 
 /* ── Stack chips ────────────────────────────────────────────── */
 .stack { display: grid; grid-template-columns: 172px 1fr; gap: 10px 18px; align-items: baseline; }
 .stack dt { font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .stack dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.tag { font-size: 12.5px; padding: 4px 10px; border-radius: 6px;
-       background: var(--wash); color: var(--ink-2); border: 1px solid var(--border); }
+.tag { font-size: 12.5px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+       background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border);
+       box-shadow: inset 0 1px 0 var(--edge-hi), var(--e0);
+       transition: transform .16s cubic-bezier(.2,.75,.3,1), box-shadow .16s, color .16s; }
+.tag:hover { transform: translateY(-2px); color: var(--ink); box-shadow: inset 0 1px 0 var(--edge-hi), var(--e1); }
+.tag:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 
 /* ── Facts grid ─────────────────────────────────────────────── */
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; }
@@ -224,6 +414,14 @@ button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 .facts li { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); margin-bottom: 8px; }
 .facts li b { display: block; color: var(--ink); font-weight: 500; }
 .facts li span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* The certification entries are buttons, styled to look like the list items
+   around them rather than like controls. */
+.certbtn { display: block; width: 100%; text-align: left; padding: 3px 6px 3px 0;
+           margin: -3px 0 -3px -6px; background: none; border: 0; border-radius: 7px;
+           cursor: pointer; font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+           transition: background .14s, padding .14s; }
+.certbtn:hover { background: var(--wash); padding-left: 6px; margin-left: -6px; }
+.certbtn:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 
 /* ── Table view ─────────────────────────────────────────────── */
 #tables { display: none; }
@@ -249,6 +447,88 @@ button:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
 
 footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: center; }
 
+/* ── Synopsis modal ─────────────────────────────────────────── */
+/* The sheet is launched from the rect of whatever was clicked, so the
+   detail visibly comes out of the thing you pressed rather than just
+   appearing in the middle of the screen. */
+#modal {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 24px;
+  perspective: 1700px;
+  opacity: 0; visibility: hidden;
+  transition: opacity .25s ease, visibility 0s linear .3s;
+}
+#modal[data-on="true"] {
+  opacity: 1; visibility: visible;
+  transition: opacity .25s ease, visibility 0s linear 0s;
+}
+#modal::before {
+  content: ""; position: absolute; inset: 0; background: var(--scrim);
+  -webkit-backdrop-filter: blur(9px) saturate(.7);
+          backdrop-filter: blur(9px) saturate(.7);
+}
+#sheet {
+  position: relative; width: min(760px, 100%);
+  max-height: min(84vh, 100%); overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 26px 30px 28px; box-shadow: var(--e3);
+  opacity: 0;
+  transform: translate(var(--ox,0px), var(--oy,0px)) scale(var(--os,.3)) rotateX(9deg);
+  transition: transform .42s cubic-bezier(.2,.85,.3,1), opacity .28s ease;
+}
+#sheet.in { opacity: 1; transform: translate(0px,0px) scale(1) rotateX(0deg); }
+#sheet:focus { outline: none; }
+
+.sclose {
+  position: absolute; top: 15px; right: 16px; width: 30px; height: 30px;
+  display: grid; place-items: center; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--ink-2); cursor: pointer; font-size: 13px; line-height: 1;
+  box-shadow: inset 0 1px 0 var(--edge-hi), var(--e0);
+}
+.sclose:hover { background: var(--wash); color: var(--ink); }
+.skind { font-size: 11px; font-weight: 700; letter-spacing: .1em;
+         text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+.stitle { font-size: 22px; line-height: 1.2; letter-spacing: -.022em; color: var(--ink); padding-right: 42px; }
+.ssub { margin-top: 6px; font-size: 14.5px; color: var(--ink-2); }
+.smeta { margin-top: 11px; display: flex; flex-wrap: wrap; gap: 6px 14px;
+         font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sbody { margin-top: 18px; border-top: 1px solid var(--grid); padding-top: 17px; }
+.sbody h4 { margin: 20px 0 9px; font-size: 11px; font-weight: 700; letter-spacing: .09em;
+            text-transform: uppercase; color: var(--muted); }
+.sbody > h4:first-child { margin-top: 0; }
+.sbody ul { margin: 0; padding-left: 18px; }
+.sbody li { font-size: 14px; line-height: 1.58; color: var(--ink-2); margin-bottom: 7px; }
+.sbody p { margin: 0 0 11px; font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+.sbody .poc { margin-top: 15px; padding: 2px 0 2px 14px;
+              border-left: 2px solid var(--poc-accent, var(--border)); }
+.sbody .poc > b { display: block; font-size: 13.5px; color: var(--ink); margin-bottom: 8px; }
+/* A row per related role, so every synopsis stays anchored to the timeline. */
+.srow { display: flex; gap: 12px; align-items: baseline; padding: 8px 10px 8px 0;
+        border-top: 1px solid var(--grid); font-size: 13.5px; }
+.srow:first-of-type { border-top: 0; }
+.srow i { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto;
+          align-self: center; background: var(--sw); box-shadow: var(--e0); }
+.srow b { color: var(--ink); font-weight: 600; }
+.srow em { font-style: normal; color: var(--ink-2); }
+.srow .when { margin-left: auto; color: var(--muted);
+              font-variant-numeric: tabular-nums; white-space: nowrap; }.srow.here { background: var(--wash); border-radius: 7px; padding-left: 10px; }
+.schips { display: flex; flex-wrap: wrap; gap: 6px; }
+.schips span { font-size: 12px; padding: 3px 9px; border-radius: 5px;
+               background: var(--surface-2); border: 1px solid var(--border); color: var(--ink-2); }
+/* Evidence: the actual résumé line that mentions the thing you clicked. */
+.squote { margin: 0 0 12px; padding-left: 13px; border-left: 2px solid var(--grid);
+          font-size: 13.4px; line-height: 1.55; color: var(--ink-2); }
+.squote cite { display: block; margin-top: 5px; font-style: normal; font-size: 12px; color: var(--muted); }
+
+/* ── Entrance: cards swing up out of the page as they scroll in ── */
+.card.reveal {
+  opacity: 0; transform-origin: 50% 0;
+  transform: perspective(1500px) translateY(22px) rotateX(5deg);
+  transition: opacity .5s ease, transform .6s cubic-bezier(.2,.75,.3,1);
+}
+.card.reveal.in { opacity: 1; transform: perspective(1500px) translateY(0) rotateX(0deg); }
+
 @media (max-width: 800px) {
   .stats { grid-template-columns: 1fr 1fr; }
   .tile.hero { grid-column: 1 / -1; }
@@ -256,21 +536,57 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
   .stack { grid-template-columns: 1fr; }
   h1 { font-size: 27px; }
 }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* Depth is kept; motion is not. Everything settles flat and stays there.
+   .cdot is excluded from the blanket reset — its translateX(-50%) is
+   positioning, not decoration, and clearing it would slide every
+   certification bead off its year on the rail. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .card, .tile, .role, .bar, .tag, .chip, .tools button, .techline button,
+  .tile .v, .tile .l, .tile .s, .card > h2, .rdot, .cell, .rchev {
+    transform: none !important;
+  }
+  .cdot, .cdot:hover, .cdot:focus-visible { transform: translateX(-50%) !important; }
+  .card.reveal { opacity: 1 !important; }
+  .card::after, .tile::after, #lamp { display: none !important; }
+  /* The sheet still needs to arrive — it just arrives without the flight. */
+  #sheet { transform: none !important; }
+}
 
 /* ── Print → clean PDF ──────────────────────────────────────── */
+/* The 3D layer is a screen affordance only: print flattens the whole scene
+   back to the flat, ink-efficient document. */
 @media print {
   :root, :root[data-theme="dark"], :root[data-theme="light"] {
     color-scheme: light;
-    --page: #fff; --surface: #fff; --ink: #000; --ink-2: #333; --muted: #666;
+    --page: #fff; --surface: #fff; --surface-2: #fff; --ink: #000; --ink-2: #1c477f; --muted: #666;
     --grid: #ddd; --axis: #bbb; --border: #ccc; --wash: #f4f4f2;
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --shadow: none;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a;
+    /* An invisible-but-valid shadow, not `none`: these tokens are composed
+       into multi-shadow lists, and `none` inside a list is a parse error. */
+    --e0: 0 0 transparent; --e1: 0 0 transparent;
+    --e2: 0 0 transparent; --e3: 0 0 transparent;
+    --edge-hi: transparent; --lip: transparent;
+    --glare: transparent; --lamp: transparent;
   }
   @page { margin: 12mm; }
   body { padding: 0; font-size: 10.5pt; }
-  .no-print, #tip { display: none !important; }
+  .no-print, #tip, #lamp, #modal { display: none !important; }
+  .card::before, .card::after, .tile::before, .tile::after, .role::before { display: none !important; }
+  .card, .tile, .role, .bar, .cell, .tag, .techline button, .chip, .tools button,
+  .tile .v, .tile .l, .tile .s, .card > h2, .rdot {
+    transform: none !important; box-shadow: none !important;
+  }
+  .cdot { transform: translateX(-50%) !important; box-shadow: none !important; }
+  .card.reveal, .card.reveal.in { opacity: 1 !important; transform: none !important; }
   .card { break-inside: avoid; page-break-inside: avoid; margin-top: 10px;
-          box-shadow: none; border-radius: 8px; padding: 14px 16px; }
+          border-radius: 8px; padding: 14px 16px; }
+  .stats { gap: 6px; }
+  .tile { padding: 10px 12px; }
+  .bar { background: var(--bar) !important; }
+  .cell.on { background: var(--c) !important; }
+  .cell.off { box-shadow: inset 0 0 0 1.5px #ccc !important; }
+  .track::before, .certrail::before { box-shadow: none !important; }
   header { padding: 0 0 6px; }
   h1 { font-size: 22pt; }
   .role .rbody { display: block !important; }
@@ -283,6 +599,7 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
 </style>
 </head>
 <body>
+<div id="lamp" aria-hidden="true"></div>
 <div class="wrap">
 
 <header>
@@ -291,11 +608,11 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
       <h1>Madhu Kumar</h1>
       <div class="role-line">RPA Architect &middot; Intelligent Automation</div>
       <div class="techline" aria-label="Technologies used in recent proof-of-concept work">
-        <span>UiPath Test Suite</span><span>Test Manager</span><span>Studio for macOS</span>
-        <span>SAP GUI</span><span>REST APIs</span><span>Postman</span><span>Bruno</span>
-        <span>AppleScript</span><span>TOTP / MFA</span>
-        <span>Data Service</span><span>Storage Buckets</span><span>Box</span>
-        <span>GitHub</span><span>CI/CD</span><span>GenAI</span>
+        <button type="button">UiPath Test Suite</button><button type="button">Test Manager</button><button type="button">Studio for macOS</button>
+        <button type="button">SAP GUI</button><button type="button">REST / HTTP APIs</button><button type="button">Postman</button><button type="button">Bruno</button>
+        <button type="button">AppleScript</button><button type="button">TOTP / MFA</button>
+        <button type="button">Data Service</button><button type="button">Storage Buckets</button><button type="button">Box</button>
+        <button type="button">GitHub</button><button type="button">CI/CD</button><button type="button">GenAI</button>
       </div>
       <div class="contact">
         <span>Bengaluru, India</span>
@@ -310,17 +627,17 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
   </div>
 </header>
 
-<section class="card" aria-label="Career at a glance">
+<section class="card" id="hero" aria-label="Career at a glance">
   <div class="stats">
-    <div class="tile hero">
+    <div class="tile hero" data-syn="years">
       <div class="v">15<span style="font-size:.55em">+</span></div>
       <div class="l">Years in enterprise IT</div>
       <div class="s">Since April 2011</div>
     </div>
-    <div class="tile"><div class="v">10+</div><div class="l">Years in RPA</div><div class="s">Since May 2016</div></div>
-    <div class="tile"><div class="v">5</div><div class="l">Certifications</div><div class="s">UiPath · Blue Prism · ITIL</div></div>
-    <div class="tile"><div class="v">5</div><div class="l">Organisations</div><div class="s">Wipro · Cognizant · ISG · IBM · HP</div></div>
-    <div class="tile"><div class="v">2</div><div class="l">RPA platforms</div><div class="s">UiPath · Blue Prism</div></div>
+    <div class="tile" data-syn="rpa"><div class="v">10+</div><div class="l">Years in RPA</div><div class="s">Since May 2016</div></div>
+    <div class="tile" data-syn="certs"><div class="v">5</div><div class="l">Certifications</div><div class="s">UiPath · Blue Prism · ITIL</div></div>
+    <div class="tile" data-syn="orgs"><div class="v">5</div><div class="l">Organisations</div><div class="s">Wipro · Cognizant · ISG · IBM · HP</div></div>
+    <div class="tile" data-syn="platforms"><div class="v">2</div><div class="l">RPA platforms</div><div class="s">UiPath · Blue Prism</div></div>
   </div>
   <p class="lede" style="margin:20px 0 0">
     RPA Architect owning the full automation lifecycle — <strong>process assessment and feasibility,
@@ -349,7 +666,7 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
 </section>
 
 <section class="card">
-  <h2>Experience <span style="text-transform:none;letter-spacing:0;font-weight:400" class="no-print">— click a role to expand</span></h2>
+  <h2>Experience <span style="text-transform:none;letter-spacing:0;font-weight:400" class="no-print">— click a role for the full synopsis</span></h2>
   <div class="roles" id="roles"></div>
 </section>
 
@@ -397,10 +714,14 @@ footer { margin-top: 26px; font-size: 12px; color: var(--muted); text-align: cen
   <table class="dt" id="dtMatrix"></table>
 </section>
 
-<footer class="no-print">Interactive résumé · press <strong>⇩ PDF</strong> to print a clean copy</footer>
+<footer class="no-print">Interactive résumé · click any detail for a synopsis · press <strong>⇩ PDF</strong> to print a clean copy</footer>
 </div>
 
 <div id="tip" role="tooltip" aria-hidden="true"></div>
+
+<div id="modal" data-on="false" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div id="sheet" tabindex="-1"></div>
+</div>
 
 <script>
 "use strict";
@@ -486,19 +807,32 @@ const ROLES = [
 ];
 
 const CAPS = [
-  { id:"arch",   name:"Solution architecture" },
-  { id:"build",  name:"Automation development" },
-  { id:"integ",  name:"Systems integration & scripting" },
-  { id:"assess", name:"Process assessment & feasibility" },
-  { id:"doc",    name:"Design documentation (SDD)" },
-  { id:"test",   name:"Testing, UAT & rollout" },
-  { id:"std",    name:"Standards & code review" },
-  { id:"lead",   name:"Team leadership" },
-  { id:"mentor", name:"Mentoring & enablement" },
-  { id:"client", name:"Client & stakeholder management" },
-  { id:"testauto", name:"Test automation & CI/CD" },
-  { id:"eval",   name:"Platform evaluation & tool selection" },
-  { id:"itil",   name:"ITIL service management" }
+  { id:"arch",   name:"Solution architecture",
+    about:"Deciding the shape of an automation before it is built — components, boundaries, reuse and how it survives change." },
+  { id:"build",  name:"Automation development",
+    about:"Hands-on configuration of the workflows, objects and reusable components that make up a running automation." },
+  { id:"integ",  name:"Systems integration & scripting",
+    about:"Joining systems that were never designed to talk to each other, via APIs, scripts, databases and native application interfaces." },
+  { id:"assess", name:"Process assessment & feasibility",
+    about:"Judging whether a candidate process can and should be automated, and what it would cost to do." },
+  { id:"doc",    name:"Design documentation (SDD)",
+    about:"Recording the agreed design so it survives handover, audit and later change — principally the Solution Design Document." },
+  { id:"test",   name:"Testing, UAT & rollout",
+    about:"Proving the build against the requirement, supporting business sign-off, and getting it into production safely." },
+  { id:"std",    name:"Standards & code review",
+    about:"Defining what good looks like across a team, then holding deliverables to it through review." },
+  { id:"lead",   name:"Team leadership",
+    about:"Owning delivery through other people — allocation, quality, escalation and schedule." },
+  { id:"mentor", name:"Mentoring & enablement",
+    about:"Raising the technical capability of others, through one-to-one coaching and structured workshops." },
+  { id:"client", name:"Client & stakeholder management",
+    about:"Running the relationship with the people who fund, approve and depend on the automation." },
+  { id:"testauto", name:"Test automation & CI/CD",
+    about:"Automating the tests themselves, and triggering them from pipelines rather than by hand." },
+  { id:"eval",   name:"Platform evaluation & tool selection",
+    about:"Comparing automation products against a real requirement and recommending which to adopt." },
+  { id:"itil",   name:"ITIL service management",
+    about:"Running IT services to defined process — incident, problem, change, request and service-level management." }
 ];
 
 const FILTERS = [
@@ -512,12 +846,19 @@ const FILTERS = [
   { id:"itil",   name:"Service management" }
 ];
 
+/* `about` describes the credential itself — what the qualification covers.
+   Nothing in it is a claim about this career beyond holding it. */
 const CERTS = [
-  { at:2011.00, short:"2011", name:"ITIL V3 Foundation", when:"Jan 2011" },
-  { at:2013.17, short:"2013", name:"ITIL Intermediate — OSA (Operations Support & Analysis)", when:"Mar 2013" },
-  { at:2016.42, short:"2016", name:"Blue Prism Accredited Developer", when:"Jun 2016" },
-  { at:2020.08, short:"2020", name:"Blue Prism Accredited Professional Developer", when:"Feb 2020" },
-  { at:2025.08, short:"2025", name:"UiPath Certified Professional — Automation Developer Associate", when:"Feb 2025" }
+  { at:2011.00, short:"2011", name:"ITIL V3 Foundation", when:"Jan 2011", by:"AXELOS / ITIL",
+    about:"The entry-level ITIL qualification. Covers the service lifecycle, core terminology and the principal service-management processes." },
+  { at:2013.17, short:"2013", name:"ITIL Intermediate — OSA (Operations Support & Analysis)", when:"Mar 2013", by:"AXELOS / ITIL",
+    about:"An ITIL capability module covering event, incident, request fulfilment, problem and access management, together with the service desk function." },
+  { at:2016.42, short:"2016", name:"Blue Prism Accredited Developer", when:"Jun 2016", by:"Blue Prism",
+    about:"Blue Prism's foundational developer accreditation — process and object design, the work queue model and exception handling." },
+  { at:2020.08, short:"2020", name:"Blue Prism Accredited Professional Developer", when:"Feb 2020", by:"Blue Prism",
+    about:"The advanced tier of the Blue Prism developer track, covering complex object design, reuse and resilient production automations." },
+  { at:2025.08, short:"2025", name:"UiPath Certified Professional — Automation Developer Associate", when:"Feb 2025", by:"UiPath",
+    about:"UiPath's associate-level developer certification — Studio, selectors, data manipulation, error handling and Orchestrator fundamentals." }
 ];
 
 const STACK = [
@@ -538,6 +879,48 @@ const el = (tag, cls, html) => { const n = document.createElement(tag);
   if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
 const pct = y => ((y - AXIS.from) / (AXIS.to - AXIS.from)) * 100;
 const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const roleById = id => ROLES.find(r => r.id === id);
+
+/* Decimal years → "N yr M mo", used wherever a synopsis states a duration
+   so the number is always computed from the dates rather than asserted. */
+function span(from, to) {
+  const m = Math.max(0, Math.round((to - from) * 12));
+  const y = Math.floor(m / 12), mo = m % 12;
+  return [y ? y + " yr" : "", mo ? mo + " mo" : ""].filter(Boolean).join(" ") || "under a month";
+}
+
+/* Every line of résumé prose for one role, for evidence lookups. The PoC
+   engagement title counts — it names technologies nothing else does.
+   Newline-joined so a line can be recovered intact by evidence(). */
+function roleText(r) {
+  return [...r.bullets, ...(r.poc ? [r.poc.label, ...r.poc.bullets] : [])].join("\n");
+}
+
+/* Roles whose résumé text names `term`, plus the sentence that names it.
+   Word-boundary matched, so a synopsis can always show the reader the line
+   it drew its claim from instead of asserting anything new. */
+function evidence(term) {
+  const tries = [term, ...term.split("/").map(s => s.trim())]
+    .filter((v, i, a) => v.length >= 3 && a.indexOf(v) === i);
+  for (const t of tries) {
+    const rx = new RegExp("\\b" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+    const hits = [];
+    ROLES.forEach(r => {
+      const line = roleText(r).split("\n").find(s => rx.test(s));
+      if (line) hits.push({ role: r, line });
+    });
+    if (hits.length) return { term: t, hits };
+  }
+  return { term, hits: [] };
+}
+
+/* A role row, used by every synopsis that lists roles. */
+function srow(r, here) {
+  return `<div class="srow${here ? " here" : ""}">
+    <i style="--sw:${PHASES[r.phase].color}"></i>
+    <b>${esc(r.title)}</b><em>${esc(r.co)}</em>
+    <span class="when">${esc(r.dates)}</span></div>`;
+}
 
 /* ── Tooltip ─────────────────────────────────────────────────── */
 const tip = $("#tip");
@@ -564,12 +947,209 @@ function bindTip(node, html) {
   node.addEventListener("blur", hideTip);
 }
 
+/* ── Synopsis modal ───────────────────────────────────────────
+   One sheet, five content builders. The sheet flies out of the rect of
+   whatever was clicked, so the detail is visibly connected to its source. */
+
+const modal = $("#modal"), sheet = $("#sheet");
+let lastFocus = null;
+
+function shell({ kind, title, sub, meta, body }) {
+  return `<button class="sclose" type="button" aria-label="Close synopsis">✕</button>
+    <div class="skind">${esc(kind)}</div>
+    <h2 class="stitle" id="sheetTitle">${title}</h2>
+    ${sub  ? `<div class="ssub">${sub}</div>` : ""}
+    ${meta ? `<div class="smeta">${meta}</div>` : ""}
+    <div class="sbody">${body}</div>`;
+}
+
+function openSheet(html, origin) {
+  lastFocus = document.activeElement;
+  sheet.innerHTML = html;
+  sheet.scrollTop = 0;
+  sheet.classList.remove("in");
+  modal.dataset.on = "true";
+
+  // Measure after the sheet is laid out, then set the from-state.
+  const s = sheet.getBoundingClientRect();
+  const o = origin && origin.getBoundingClientRect();
+  if (o && o.width && MOTION) {
+    sheet.style.setProperty("--ox", ((o.left + o.width  / 2) - (s.left + s.width  / 2)).toFixed(1) + "px");
+    sheet.style.setProperty("--oy", ((o.top  + o.height / 2) - (s.top  + s.height / 2)).toFixed(1) + "px");
+    sheet.style.setProperty("--os", Math.min(0.9, Math.max(0.16, o.width / s.width)).toFixed(3));
+  } else {
+    sheet.style.setProperty("--ox", "0px");
+    sheet.style.setProperty("--oy", "0px");
+    sheet.style.setProperty("--os", "0.94");
+  }
+  void sheet.offsetWidth;                       // commit the from-state
+  sheet.classList.add("in");
+
+  document.body.style.overflow = "hidden";
+  hideTip();
+  $(".sclose", sheet).addEventListener("click", closeSheet);
+  sheet.focus();
+}
+
+function closeSheet() {
+  if (modal.dataset.on !== "true") return;
+  modal.dataset.on = "false";
+  sheet.classList.remove("in");
+  document.body.style.overflow = "";
+  if (lastFocus && lastFocus.isConnected) lastFocus.focus();
+  lastFocus = null;
+}
+
+modal.addEventListener("click", e => { if (e.target === modal) closeSheet(); });
+addEventListener("keydown", e => {
+  if (modal.dataset.on !== "true") return;
+  if (e.key === "Escape") { closeSheet(); return; }
+  if (e.key !== "Tab") return;
+  // Trap: the sheet is the only reachable region while it is open.
+  const f = [...sheet.querySelectorAll("button, [href], [tabindex]:not([tabindex='-1'])")];
+  if (!f.length) { e.preventDefault(); return; }
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && (document.activeElement === first || document.activeElement === sheet)) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault(); first.focus();
+  }
+});
+
+/* — Role — the full entry, exactly as the printed CV carries it. */
+function synRole(id, origin) {
+  const r = roleById(id);
+  if (!r) return;
+  const caps = CAPS.filter(c => r.caps.includes(c.id));
+  let body = "<h4>What the role involved</h4><ul>" +
+    r.bullets.map(b => `<li>${esc(b)}</li>`).join("") + "</ul>";
+  if (r.poc) {
+    body += `<div class="poc" style="--poc-accent:${PHASES[r.phase].color}">` +
+            `<b>${esc(r.poc.label)}</b><ul>` +
+            r.poc.bullets.map(b => `<li>${esc(b)}</li>`).join("") + "</ul></div>";
+  }
+  body += "<h4>Capabilities applied</h4><div class=\"schips\">" +
+          caps.map(c => `<span>${esc(c.name)}</span>`).join("") + "</div>";
+
+  openSheet(shell({
+    kind: PHASES[r.phase].label,
+    title: esc(r.title),
+    sub: esc(r.co) + " · " + esc(r.loc),
+    meta: `<span>${esc(r.dates)}</span><span>${span(r.from, r.to)}</span>` +
+          `<span>${caps.length} of ${CAPS.length} capabilities</span>`,
+    body
+  }), origin);
+}
+
+/* — Certification — what it is, and where it sits in the timeline. */
+function synCert(i, origin) {
+  const c = CERTS[i];
+  const during = ROLES.find(r => c.at >= r.from && c.at <= r.to);
+  let body = `<p>${esc(c.about)}</p>`;
+  body += "<h4>" + (during ? "Held while at" : "Position in the timeline") + "</h4>";
+  body += during
+    ? srow(during, true)
+    : `<p>Earned ${esc(c.when)}, before the earliest role shown on this timeline.</p>`;
+
+  openSheet(shell({
+    kind: "Certification",
+    title: esc(c.name),
+    sub: esc(c.by),
+    meta: `<span>Earned ${esc(c.when)}</span>`,
+    body
+  }), origin);
+}
+
+/* — Stat tile — the number, unpacked into the rows it counts. */
+function synStat(key, origin) {
+  const rpa = ROLES.filter(r => r.from >= 2016.3);
+  const T = {
+    years: {
+      kind: "Career length", title: "15+ years in enterprise IT",
+      sub: "From April 2011 to today, across five organisations.",
+      meta: `<span>${span(2011.25, NOW)}</span><span>5 roles</span>`,
+      body: "<h4>Every role, oldest first</h4>" +
+            [...ROLES].reverse().map(r => srow(r)).join("")
+    },
+    rpa: {
+      kind: "Specialisation", title: "10+ years in RPA",
+      sub: "From May 2016, when the career moved from ITIL service management into automation.",
+      meta: `<span>${span(2016.33, NOW)}</span><span>${rpa.length} roles</span>`,
+      body: "<h4>Automation roles</h4>" + [...rpa].reverse().map(r => srow(r)).join("") +
+            "<h4>Before that</h4>" + srow(roleById("hp"))
+    },
+    certs: {
+      kind: "Credentials", title: "5 certifications",
+      sub: "Across ITIL service management and both RPA platforms.",
+      meta: `<span>2011 – 2025</span>`,
+      body: "<h4>Held, most recent first</h4>" +
+            [...CERTS].reverse().map(c =>
+              `<div class="srow"><b>${esc(c.name)}</b><span class="when">${esc(c.when)}</span></div>`).join("")
+    },
+    orgs: {
+      kind: "Employers", title: "5 organisations",
+      sub: "Hewlett-Packard, IBM, ISG-One, Cognizant and Wipro.",
+      meta: `<span>2011 – present</span>`,
+      body: "<h4>In order</h4>" + [...ROLES].reverse().map(r => srow(r)).join("")
+    },
+    platforms: {
+      kind: "Platforms", title: "2 RPA platforms",
+      sub: "UiPath and Blue Prism, each named in the record below.",
+      meta: "",
+      body: ["UiPath", "Blue Prism"].map(p => {
+        const e = evidence(p);
+        return `<h4>${esc(p)}</h4>` + (e.hits.length
+          ? e.hits.map(h => `<blockquote class="squote">${esc(h.line)}` +
+              `<cite>${esc(h.role.title)}, ${esc(h.role.short)} · ${esc(h.role.dates)}</cite></blockquote>`).join("")
+          : `<p>Listed in the technical stack.</p>`);
+      }).join("")
+    }
+  }[key];
+  if (T) openSheet(shell(T), origin);
+}
+
+/* — Capability — the row of the matrix, read across the whole career. */
+function synCap(capId, roleId, origin) {
+  const c = CAPS.find(x => x.id === capId);
+  if (!c) return;
+  const held = ROLES.filter(r => r.caps.includes(capId));
+  openSheet(shell({
+    kind: "Capability",
+    title: esc(c.name),
+    sub: esc(c.about),
+    meta: `<span>Applied in ${held.length} of ${ROLES.length} roles</span>`,
+    body: "<h4>Where it was applied</h4>" +
+          [...held].reverse().map(r => srow(r, r.id === roleId)).join("")
+  }), origin);
+}
+
+/* — Technology — the category it belongs to, and the lines that name it. */
+function synTech(name, origin) {
+  const cat = STACK.find(([, items]) => items.includes(name));
+  const e = evidence(name);
+  const body = e.hits.length
+    ? "<h4>Named in the record</h4>" + e.hits.map(h =>
+        `<blockquote class="squote">${esc(h.line)}` +
+        `<cite>${esc(h.role.title)}, ${esc(h.role.short)} · ${esc(h.role.dates)}</cite></blockquote>`).join("")
+    : `<p>Part of the working stack. It is not called out by name in any role
+        description, so there is no line to quote here.</p>`;
+  openSheet(shell({
+    kind: cat ? cat[0] : "Proof-of-concept technology",
+    title: esc(name),
+    sub: "",
+    meta: e.hits.length
+      ? `<span>Named in ${e.hits.length} role${e.hits.length > 1 ? "s" : ""}</span>`
+      : "",
+    body
+  }), origin);
+}
+
 /* ── Legend ──────────────────────────────────────────────────── */
 (function legend() {
   const box = $("#legend");
   for (const k in PHASES) {
     const n = el("span", null,
-      `<i style="background:${PHASES[k].color}"></i>${PHASES[k].label}`);
+      `<i style="--sw:${PHASES[k].color}"></i>${PHASES[k].label}`);
     box.appendChild(n);
   }
 })();
@@ -589,13 +1169,14 @@ function bindTip(node, html) {
     const bar = el("button", "bar");
     bar.style.left = left + "%";
     bar.style.width = width + "%";
-    bar.style.background = PHASES[r.phase].color;
+    bar.style.setProperty("--bar", PHASES[r.phase].color);
     bar.setAttribute("aria-label",
-      `${r.title}, ${r.co}, ${r.dates}. ${PHASES[r.phase].label}.`);
+      `${r.title}, ${r.co}, ${r.dates}. ${PHASES[r.phase].label}. Opens synopsis.`);
+    bar.setAttribute("aria-haspopup", "dialog");
     bindTip(bar,
       `<b>${esc(r.title)}</b>${esc(r.co)}<br>${esc(r.dates)}<br>
        <span style="opacity:.7">${esc(PHASES[r.phase].label)}</span>`);
-    bar.addEventListener("click", () => openRole(r.id));
+    bar.addEventListener("click", () => synRole(r.id, bar));
     track.appendChild(bar);
 
     // Direct label: inside when the bar is wide enough, otherwise just outside.
@@ -620,11 +1201,13 @@ function bindTip(node, html) {
 
 (function certRail() {
   const rail = $("#certrail");
-  CERTS.forEach(c => {
+  CERTS.forEach((c, i) => {
     const d = el("button", "cdot");
     d.style.left = pct(c.at) + "%";
-    d.setAttribute("aria-label", `${c.name}, ${c.when}`);
+    d.setAttribute("aria-label", `${c.name}, ${c.when}. Opens synopsis.`);
+    d.setAttribute("aria-haspopup", "dialog");
     bindTip(d, `<b>${esc(c.name)}</b>${esc(c.when)}`);
+    d.addEventListener("click", () => synCert(i, d));
     rail.appendChild(d);
     const y = el("div", "cyr", c.short);
     y.style.left = pct(c.at) + "%";
@@ -632,28 +1215,41 @@ function bindTip(node, html) {
   });
 })();
 
+/* ── Stat tiles ──────────────────────────────────────────────── */
+(function statTiles() {
+  document.querySelectorAll(".tile[data-syn]").forEach(t => {
+    const key = t.dataset.syn;
+    const label = $(".l", t).textContent.trim();
+    t.setAttribute("role", "button");
+    t.setAttribute("tabindex", "0");
+    t.setAttribute("aria-haspopup", "dialog");
+    t.setAttribute("aria-label", `${$(".v", t).textContent.trim()} ${label}. Opens synopsis.`);
+    t.addEventListener("click", () => synStat(key, t));
+    t.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); synStat(key, t); }
+    });
+  });
+})();
+
 /* ── Role cards ──────────────────────────────────────────────── */
 (function roles() {
   const box = $("#roles");
-  ROLES.forEach((r, i) => {
+  ROLES.forEach(r => {
     const card = el("div", "role");
     card.dataset.role = r.id;
-    card.dataset.open = i === 0 ? "true" : "false";
 
     const head = el("button", "rhead");
-    head.setAttribute("aria-expanded", i === 0 ? "true" : "false");
+    head.type = "button";
+    head.setAttribute("aria-haspopup", "dialog");
     head.innerHTML =
-      `<span class="rdot" style="background:${PHASES[r.phase].color}"></span>
+      `<span class="rdot" style="--dot:${PHASES[r.phase].color}"></span>
        <span class="rtitle">${esc(r.title)}</span>
        <span class="rco">${esc(r.co)}</span>
        <span class="rdate">${esc(r.dates)}</span>
-       <span class="rchev">▶</span>`;
-    head.addEventListener("click", () => {
-      const open = card.dataset.open === "true";
-      card.dataset.open = String(!open);
-      head.setAttribute("aria-expanded", String(!open));
-    });
+       <span class="rchev" aria-hidden="true">↗</span>`;
+    head.addEventListener("click", () => synRole(r.id, card));
 
+    // Kept in the DOM, hidden on screen: this is what the PDF prints.
     const body = el("div", "rbody");
     let html = "<ul>" + r.bullets.map(b => `<li>${esc(b)}</li>`).join("") + "</ul>";
     if (r.poc) {
@@ -667,14 +1263,6 @@ function bindTip(node, html) {
     box.appendChild(card);
   });
 })();
-
-function openRole(id) {
-  const card = document.querySelector(`.role[data-role="${id}"]`);
-  if (!card) return;
-  card.dataset.open = "true";
-  card.querySelector(".rhead").setAttribute("aria-expanded", "true");
-  card.scrollIntoView({ behavior: "smooth", block: "center" });
-}
 
 /* ── Capability matrix ───────────────────────────────────────── */
 (function matrix() {
@@ -695,12 +1283,20 @@ function openRole(id) {
     cols.forEach(r => {
       const on = r.caps.includes(c.id);
       const td = el("td");
-      const dot = el("span", "cell " + (on ? "on" : "off"));
-      if (on) dot.style.setProperty("--c", PHASES[r.phase].color);
-      dot.setAttribute("role", "img");
-      dot.setAttribute("aria-label",
-        on ? `${c.name}: applied at ${r.short}` : `${c.name}: not at ${r.short}`);
-      if (on) bindTip(dot, `<b>${esc(c.name)}</b>${esc(r.title)}, ${esc(r.short)}`);
+      // Filled beads are buttons that open the capability synopsis;
+      // empty ones carry no information to open.
+      const dot = on ? el("button", "cell on") : el("span", "cell off");
+      if (on) {
+        dot.type = "button";
+        dot.style.setProperty("--c", PHASES[r.phase].color);
+        dot.setAttribute("aria-haspopup", "dialog");
+        dot.setAttribute("aria-label", `${c.name}: applied at ${r.short}. Opens synopsis.`);
+        bindTip(dot, `<b>${esc(c.name)}</b>${esc(r.title)}, ${esc(r.short)}`);
+        dot.addEventListener("click", () => synCap(c.id, r.id, dot));
+      } else {
+        dot.setAttribute("role", "img");
+        dot.setAttribute("aria-label", `${c.name}: not at ${r.short}`);
+      }
       td.appendChild(dot);
       tr.appendChild(td);
     });
@@ -716,16 +1312,38 @@ function openRole(id) {
   STACK.forEach(([label, items]) => {
     dl.appendChild(el("dt", null, esc(label)));
     const dd = el("dd");
-    items.forEach(i => dd.appendChild(el("span", "tag", esc(i))));
+    items.forEach(i => {
+      const b = el("button", "tag", esc(i));
+      b.type = "button";
+      b.setAttribute("aria-haspopup", "dialog");
+      b.addEventListener("click", () => synTech(i, b));
+      dd.appendChild(b);
+    });
     dl.appendChild(dd);
+  });
+})();
+
+/* ── Header technology chips ─────────────────────────────────── */
+(function techline() {
+  document.querySelectorAll(".techline button").forEach(b => {
+    const name = b.textContent.trim();
+    b.setAttribute("aria-haspopup", "dialog");
+    b.addEventListener("click", () => synTech(name, b));
   });
 })();
 
 /* ── Certification list ──────────────────────────────────────── */
 (function certList() {
   const ul = $("#certlist");
-  [...CERTS].reverse().forEach(c =>
-    ul.appendChild(el("li", null, `<b>${esc(c.name)}</b><span>${esc(c.when)}</span>`)));
+  CERTS.forEach((c, i) => {
+    const li = el("li");
+    const b = el("button", "certbtn", `<b>${esc(c.name)}</b><span>${esc(c.when)}</span>`);
+    b.type = "button";
+    b.setAttribute("aria-haspopup", "dialog");
+    b.addEventListener("click", () => synCert(i, b));
+    li.appendChild(b);
+    ul.prepend(li);                 // most recent first
+  });
 })();
 
 /* ── Filters — dim, never repaint ────────────────────────────── */
@@ -795,6 +1413,91 @@ function openRole(id) {
 })();
 
 $("#printBtn").addEventListener("click", () => window.print());
+
+/* ── 3D layer ─────────────────────────────────────────────────
+   Depth is progressive enhancement, layered on top of a document that
+   already works flat. Two independent gates:
+     MOTION — honours prefers-reduced-motion; controls the entrance.
+     TILT   — additionally requires a real hovering pointer, so touch
+              devices never get a tilt they cannot aim or undo.        */
+
+const MOTION = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const TILT   = MOTION && matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+/* Cursor-tracked key light. One writer, rAF-coalesced. */
+(function lamp() {
+  if (!TILT) return;
+  const root = document.documentElement;
+  let raf = 0, x = 50, y = 12;
+  const write = () => {
+    raf = 0;
+    root.style.setProperty("--mx", x.toFixed(1) + "%");
+    root.style.setProperty("--my", y.toFixed(1) + "%");
+  };
+  addEventListener("pointermove", e => {
+    x = (e.clientX / innerWidth)  * 100;
+    y = (e.clientY / innerHeight) * 100;
+    if (!raf) raf = requestAnimationFrame(write);
+  }, { passive: true });
+})();
+
+/* Tilt a surface toward the cursor. `max` is the half-angle in degrees:
+   large surfaces get a fraction of a degree, small tiles get several,
+   which is what keeps a 1060px card from looking like it is wobbling. */
+function tilt(node, max) {
+  if (!TILT) return;
+  let raf = 0, rx = 0, ry = 0, gx = 50, gy = 50;
+  const write = () => {
+    raf = 0;
+    node.style.setProperty("--rx", rx.toFixed(2) + "deg");
+    node.style.setProperty("--ry", ry.toFixed(2) + "deg");
+    node.style.setProperty("--gx", gx.toFixed(1) + "%");
+    node.style.setProperty("--gy", gy.toFixed(1) + "%");
+  };
+  node.addEventListener("pointermove", e => {
+    const b = node.getBoundingClientRect();
+    if (!b.width || !b.height) return;
+    const px = (e.clientX - b.left) / b.width;
+    const py = (e.clientY - b.top)  / b.height;
+    ry =  (px - 0.5) * 2 * max;          // cursor right  → right edge recedes
+    rx = -(py - 0.5) * 2 * max;          // cursor low    → bottom edge recedes
+    gx = px * 100; gy = py * 100;
+    if (!raf) raf = requestAnimationFrame(write);
+  }, { passive: true });
+  node.addEventListener("pointerenter", () => { node.dataset.tilt = "on"; });
+  node.addEventListener("pointerleave", () => {
+    node.dataset.tilt = "off";
+    rx = ry = 0; gx = gy = 50;
+    if (!raf) raf = requestAnimationFrame(write);
+  });
+}
+
+if (TILT) {
+  // The hero card stays flat — its tiles carry the depth there, and tilting
+  // both would compound into a visible double rotation.
+  document.querySelectorAll("section.card:not(#hero)").forEach(n => tilt(n, 0.9));
+  document.querySelectorAll(".tile").forEach(n => tilt(n, 7));
+  document.querySelectorAll(".role").forEach(n => tilt(n, 1.6));
+}
+
+/* Entrance. #tables is excluded: it is display:none until the Data button is
+   pressed, so the observer would never fire and it would stay at opacity 0. */
+(function reveal() {
+  if (!MOTION || !("IntersectionObserver" in window)) return;
+  const cards = [...document.querySelectorAll("section.card:not(#tables)")];
+  cards.forEach(c => c.classList.add("reveal"));
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const n = e.target;
+      io.unobserve(n);
+      n.classList.add("in");
+      // Drop the class once settled so .card's own tilt transform takes over.
+      setTimeout(() => n.classList.remove("reveal", "in"), 800);
+    });
+  }, { rootMargin: "0px 0px -6% 0px", threshold: 0.04 });
+  cards.forEach(c => io.observe(c));
+})();
 </script>
 </body>
 </html>
